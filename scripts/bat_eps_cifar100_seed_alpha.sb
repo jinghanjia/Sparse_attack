@@ -1,0 +1,29 @@
+#!/bin/bash --login
+########### SBATCH Lines for Resource Request ##########
+
+
+#SBATCH --time=1:59:00            # limit of wall clock time - how long the job will run (same as -t)
+#SBATCH --exclude=lac-143
+#SBATCH --nodes=1                 # number of different nodes - could be an exact number or a range of nodes (same as -N)
+#SBATCH --ntasks=1                  # number of tasks - how many tasks (nodes) that you require (same as -n)
+#SBATCH --cpus-per-task=2           # number of CPUs (or cores) per task (same as -c)
+#SBATCH --mem-per-cpu=8G            # memory required per allocated CPU (or core) - amount of memory (in bytes)
+#SBATCH --job-name BAT_EPS_CIFAR100_SEED    # you can give your job a name for easier identification (same as -J)
+#SBATCH --gres=gpu:v100:1
+#SBATCH --output=log/slurm/BAT_EPS_CIFAR100_SEED.out     # modify it to the name you want for output
+########## Command Lines to Run ##########
+
+module purge
+module load GCC/6.4.0-2.28  OpenMPI/2.1.2
+module load CUDA/10.0.130 cuDNN/7.5.0.56-CUDA-10.0.130
+module load Python/3.8.5
+
+export PATH=$PATH:$HOME/anaconda3/bin
+source activate biprune
+cd ~/bi-level-adt
+python3 train.py --dataset CIFAR100 --mode bat --epochs ${epoch} --cyclic-milestone 10 --lr-scheduler cyclic --lr-max 0.2 --alpha ${alpha} --pgd-no-sign --attack-lr ${atklr} --attack-step 10 --random-seed ${seed} --attack-eps ${eps} --attack-eps-test ${eps}
+scontrol show job $SLURM_JOB_ID     ### write job information to output file
+
+# Submission command:
+# seed=2022; eps=8; epoch=20; alpha=0.01; atklr=20000;
+# sbatch --job-name=BAT_EPS${eps}_CIFAR100_ALPHA${alpha}_ATKLR${atklr}_SEED${seed} --output=log/BAT_EPS${eps}_CIFAR100_ALPHA${alpha}_ATKLR${atklr}_SEED${seed}.out --export=seed=${seed},epoch=${epoch},atklr=${atklr},eps=${eps},alpha=${alpha} scripts/bat_eps_cifar100_seed_alpha.sb
